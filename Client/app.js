@@ -1,19 +1,25 @@
 // ================= API CONFIG =================
 
-// 🔥 AUTO SWITCH (LOCAL vs RENDER)
+// Works locally and on Render
 const API =
-  window.location.hostname === 'localhost'
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000'
-    : 'https://your-backend-name.onrender.com'; // 🔴 REPLACE THIS
+    : window.location.origin;
 
 // ================= AUTH =================
 
 // REGISTER
 async function register() {
-  const name = document.getElementById('name')?.value;
-  const email = document.getElementById('email')?.value;
+  const name = document.getElementById('name')?.value?.trim();
+  const email = document.getElementById('email')?.value?.trim();
   const password = document.getElementById('password')?.value;
-  const role = document.getElementById('role')?.value;
+  const role = document.getElementById('role')?.value || 'user';
+
+  if (!name || !email || !password) {
+    alert('Please fill in all required fields.');
+    return;
+  }
 
   try {
     const res = await fetch(API + '/register', {
@@ -22,35 +28,45 @@ async function register() {
       body: JSON.stringify({ name, email, password, role })
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    let data = {};
 
-    console.log("REGISTER RESPONSE:", data);
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text };
+    }
 
-    if (!data._id) {
-      alert('Registration failed');
+    console.log('REGISTER RESPONSE:', data);
+
+    if (!res.ok || !data._id) {
+      alert(data.error || data.message || 'Registration failed');
       return;
     }
 
     localStorage.setItem('userId', data._id);
-    localStorage.setItem('role', data.role);
+    localStorage.setItem('role', data.role || 'user');
 
-    // 🔁 REDIRECT
     if (data.role === 'admin') {
       window.location.href = 'municipal.html';
     } else {
       window.location.href = 'dashboard.html';
     }
-
   } catch (err) {
-    console.error(err);
+    console.error('REGISTER ERROR:', err);
     alert('Error connecting to server');
   }
 }
 
 // LOGIN
 async function login() {
-  const email = document.getElementById('email')?.value;
+  const email = document.getElementById('email')?.value?.trim();
   const password = document.getElementById('password')?.value;
+
+  if (!email || !password) {
+    alert('Please enter your email and password.');
+    return;
+  }
 
   try {
     const res = await fetch(API + '/login', {
@@ -59,27 +75,32 @@ async function login() {
       body: JSON.stringify({ email, password })
     });
 
-    if (!res.ok) {
-      alert('Invalid login');
+    const text = await res.text();
+    let data = {};
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text };
+    }
+
+    console.log('LOGIN RESPONSE:', data);
+
+    if (!res.ok || !data._id) {
+      alert(data.error || data.message || 'Invalid login');
       return;
     }
 
-    const data = await res.json();
-
-    console.log("LOGIN RESPONSE:", data);
-
     localStorage.setItem('userId', data._id);
-    localStorage.setItem('role', data.role);
+    localStorage.setItem('role', data.role || 'user');
 
-    // 🔁 REDIRECT
     if (data.role === 'admin') {
       window.location.href = 'municipal.html';
     } else {
       window.location.href = 'dashboard.html';
     }
-
   } catch (err) {
-    console.error(err);
+    console.error('LOGIN ERROR:', err);
     alert('Error connecting to server');
   }
 }
@@ -94,8 +115,7 @@ function checkAuth() {
 // ADMIN CHECK
 function checkAdmin() {
   const role = localStorage.getItem('role');
-
-  console.log("ROLE:", role);
+  console.log('ROLE:', role);
 
   if (role !== 'admin') {
     alert('Access denied');
@@ -122,140 +142,231 @@ function downloadForm() {
 // SUBMIT OBJECTION
 async function submitObjection() {
   const userId = localStorage.getItem('userId');
-  const propertyId = document.getElementById('propId')?.value;
-  const reason = document.getElementById('reason')?.value;
+  const propertyId = document.getElementById('propId')?.value?.trim();
+  const reason = document.getElementById('reason')?.value?.trim();
 
-  await fetch(API + '/objections', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, propertyId, reason })
-  });
+  if (!propertyId || !reason) {
+    alert('Please enter the property ID and reason.');
+    return;
+  }
 
-  alert('✅ Objection submitted');
+  try {
+    const res = await fetch(API + '/objections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, propertyId, reason })
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      alert(msg || 'Failed to submit objection');
+      return;
+    }
+
+    alert('✅ Objection submitted');
+  } catch (err) {
+    console.error('SUBMIT OBJECTION ERROR:', err);
+    alert('Error connecting to server');
+  }
 }
 
 // LOAD USER OBJECTIONS
 async function loadObjections() {
   const userId = localStorage.getItem('userId');
 
-  const res = await fetch(API + '/objections/' + userId);
-  const data = await res.json();
+  try {
+    const res = await fetch(API + '/objections/' + userId);
+    const data = await res.json();
 
-  document.getElementById('objections').innerHTML = data.map(o => `
-    <div class="card">
-      <strong>${o.propertyId}</strong><br>
-      ${o.reason}<br>
-      <span style="color:${getStatusColor(o.status)}">${o.status}</span>
-    </div>
-  `).join('');
+    const target = document.getElementById('objections');
+    if (!target) return;
+
+    if (!Array.isArray(data) || data.length === 0) {
+      target.innerHTML = `<div class="card">No objections found.</div>`;
+      return;
+    }
+
+    target.innerHTML = data.map(o => `
+      <div class="card">
+        <strong>${o.propertyId || 'N/A'}</strong><br>
+        ${o.reason || 'No reason provided'}<br>
+        <span style="color:${getStatusColor(o.status)}; font-weight:bold;">
+          ${o.status || 'Pending'}
+        </span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('LOAD OBJECTIONS ERROR:', err);
+    alert('Error loading objections');
+  }
 }
 
 // ADMIN: LOAD ALL OBJECTIONS
 async function loadAllObjections() {
   const content = document.getElementById('adminContent');
+  if (!content) return;
 
-  const res = await fetch(API + '/all-objections');
-  const data = await res.json();
+  try {
+    const res = await fetch(API + '/all-objections');
+    const data = await res.json();
 
-  if (data.length === 0) {
-    content.innerHTML = "<p>No objections found.</p>";
-    return;
+    if (!Array.isArray(data) || data.length === 0) {
+      content.innerHTML = `<div class="card"><p>No objections found.</p></div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <h3>📋 All Objections</h3>
+      ${data.map(o => `
+        <div class="card">
+          <strong>User:</strong> ${o.userId || 'N/A'}<br>
+          <strong>Property:</strong> ${o.propertyId || 'N/A'}<br>
+          <strong>Reason:</strong> ${o.reason || 'N/A'}<br>
+          <strong>Status:</strong>
+          <span style="color:${getStatusColor(o.status)}; font-weight:bold;">
+            ${o.status || 'Pending'}
+          </span>
+        </div>
+      `).join('')}
+    `;
+  } catch (err) {
+    console.error('LOAD ALL OBJECTIONS ERROR:', err);
+    content.innerHTML = `<div class="card"><p>Failed to load objections.</p></div>`;
   }
-
-  content.innerHTML = `
-    <h3>📋 All Objections</h3>
-    ${data.map(o => `
-      <div class="card">
-        <strong>User:</strong> ${o.userId}<br>
-        <strong>Property:</strong> ${o.propertyId}<br>
-        <strong>Reason:</strong> ${o.reason}<br>
-        <strong>Status:</strong> ${o.status}
-      </div>
-    `).join('')}
-  `;
 }
 
 // APPEALS
 async function submitAppeal() {
-  const objectionId = document.getElementById('objId')?.value;
-  const reason = document.getElementById('appealReason')?.value;
+  const objectionId = document.getElementById('objId')?.value?.trim();
+  const reason = document.getElementById('appealReason')?.value?.trim();
 
-  await fetch(API + '/appeals', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ objectionId, reason })
-  });
+  if (!objectionId || !reason) {
+    alert('Please enter the objection ID and reason for appeal.');
+    return;
+  }
 
-  alert('✅ Appeal submitted');
+  try {
+    const res = await fetch(API + '/appeals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ objectionId, reason })
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      alert(msg || 'Failed to submit appeal');
+      return;
+    }
+
+    alert('✅ Appeal submitted');
+  } catch (err) {
+    console.error('SUBMIT APPEAL ERROR:', err);
+    alert('Error connecting to server');
+  }
 }
 
 // UPLOAD
 async function uploadFile() {
   const fileInput = document.getElementById('file');
 
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+    alert('Please choose a file first.');
+    return;
+  }
+
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
 
-  await fetch(API + '/upload', {
-    method: 'POST',
-    body: formData
-  });
+  try {
+    const res = await fetch(API + '/upload', {
+      method: 'POST',
+      body: formData
+    });
 
-  alert('✅ File uploaded');
+    if (!res.ok) {
+      const msg = await res.text();
+      alert(msg || 'File upload failed');
+      return;
+    }
+
+    alert('✅ File uploaded');
+  } catch (err) {
+    console.error('UPLOAD ERROR:', err);
+    alert('Error connecting to server');
+  }
 }
 
 // NOTIFICATIONS
 async function loadNotifications() {
   const userId = localStorage.getItem('userId');
+  const target = document.getElementById('notifications');
+  if (!target) return;
 
-  const res = await fetch(API + '/notifications/' + userId);
-  const data = await res.json();
+  try {
+    const res = await fetch(API + '/notifications/' + userId);
+    const data = await res.json();
 
-  document.getElementById('notifications').innerHTML = data.map(n =>
-    `<div class="card">🔔 ${n.message}</div>`
-  ).join('');
+    if (!Array.isArray(data) || data.length === 0) {
+      target.innerHTML = `<div class="card">No notifications yet.</div>`;
+      return;
+    }
+
+    target.innerHTML = data.map(n =>
+      `<div class="card">🔔 ${n.message || 'Notification'}</div>`
+    ).join('');
+  } catch (err) {
+    console.error('LOAD NOTIFICATIONS ERROR:', err);
+    alert('Error loading notifications');
+  }
 }
 
 // ================= ADMIN TOOLS =================
 
 // ESTIMATOR
 function estimateValue() {
-  document.getElementById('adminContent').innerHTML = `
+  const target = document.getElementById('adminContent');
+  if (!target) return;
+
+  target.innerHTML = `
     <h3>💰 Market Estimator</h3>
-    <input id="size" placeholder="Size (m²)">
-    <input id="rate" placeholder="Rate per m²">
+    <input id="size" type="number" placeholder="Size (m²)">
+    <input id="rate" type="number" placeholder="Rate per m²">
     <button onclick="calculate()">Calculate</button>
     <p id="result"></p>
   `;
 }
 
 function calculate() {
-  const size = document.getElementById('size').value;
-  const rate = document.getElementById('rate').value;
+  const size = Number(document.getElementById('size')?.value || 0);
+  const rate = Number(document.getElementById('rate')?.value || 0);
 
   document.getElementById('result').innerText =
-    "Estimated Value: R" + (size * rate);
+    `Estimated Value: R${(size * rate).toLocaleString()}`;
 }
 
 // AI TOOL
 function aiValuation() {
-  document.getElementById('adminContent').innerHTML = `
+  const target = document.getElementById('adminContent');
+  if (!target) return;
+
+  target.innerHTML = `
     <h3>🤖 AI Comparison</h3>
-    <input id="value1" placeholder="Municipal Value">
-    <input id="value2" placeholder="Market Value">
+    <input id="value1" type="number" placeholder="Municipal Value">
+    <input id="value2" type="number" placeholder="Market Value">
     <button onclick="compare()">Compare</button>
     <p id="aiResult"></p>
   `;
 }
 
 function compare() {
-  const v1 = document.getElementById('value1').value;
-  const v2 = document.getElementById('value2').value;
-
+  const v1 = Number(document.getElementById('value1')?.value || 0);
+  const v2 = Number(document.getElementById('value2')?.value || 0);
   const diff = Math.abs(v1 - v2);
 
   document.getElementById('aiResult').innerText =
-    diff > 50000 ? "⚠️ Large difference" : "✅ Values aligned";
+    diff > 50000
+      ? '⚠️ Large difference'
+      : '✅ Values aligned';
 }
 
 // ================= HELPERS =================
