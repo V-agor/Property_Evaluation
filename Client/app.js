@@ -1,72 +1,86 @@
+// ================= API CONFIG =================
 
-// ✅ AUTO SWITCH BETWEEN LOCAL + RENDER
-const API = window.location.hostname === 'localhost'
-  ? 'http://localhost:3000'
-  : 'https://your-backend-name.onrender.com';
+// 🔥 AUTO SWITCH (LOCAL vs RENDER)
+const API =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://your-backend-name.onrender.com'; // 🔴 REPLACE THIS
 
 // ================= AUTH =================
 
 // REGISTER
 async function register() {
-  const name = document.getElementById('name').value;
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const role = document.getElementById('role').value;
+  const name = document.getElementById('name')?.value;
+  const email = document.getElementById('email')?.value;
+  const password = document.getElementById('password')?.value;
+  const role = document.getElementById('role')?.value;
 
-  const res = await fetch(API + '/register', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name, email, password, role })
-  });
+  try {
+    const res = await fetch(API + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, role })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!data._id) {
-    alert('Registration failed');
-    return;
-  }
+    console.log("REGISTER RESPONSE:", data);
 
-  // ✅ SAVE ROLE
-  localStorage.setItem('userId', data._id);
-  localStorage.setItem('role', data.role);
+    if (!data._id) {
+      alert('Registration failed');
+      return;
+    }
 
-  console.log("REGISTER ROLE:", data.role); // DEBUG
+    localStorage.setItem('userId', data._id);
+    localStorage.setItem('role', data.role);
 
-  if (data.role === 'admin') {
-    window.location.href = 'municipal.html';
-  } else {
-    window.location.href = 'dashboard.html';
+    // 🔁 REDIRECT
+    if (data.role === 'admin') {
+      window.location.href = 'municipal.html';
+    } else {
+      window.location.href = 'dashboard.html';
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert('Error connecting to server');
   }
 }
 
 // LOGIN
 async function login() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  const email = document.getElementById('email')?.value;
+  const password = document.getElementById('password')?.value;
 
-  const res = await fetch(API + '/login', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ email, password })
-  });
+  try {
+    const res = await fetch(API + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-  if (!res.ok) {
-    alert('Invalid login');
-    return;
-  }
+    if (!res.ok) {
+      alert('Invalid login');
+      return;
+    }
 
-  const data = await res.json();
+    const data = await res.json();
 
-  // ✅ SAVE ROLE
-  localStorage.setItem('userId', data._id);
-  localStorage.setItem('role', data.role);
+    console.log("LOGIN RESPONSE:", data);
 
-  console.log("LOGIN ROLE:", data.role); // DEBUG
+    localStorage.setItem('userId', data._id);
+    localStorage.setItem('role', data.role);
 
-  if (data.role === 'admin') {
-    window.location.href = 'municipal.html';
-  } else {
-    window.location.href = 'dashboard.html';
+    // 🔁 REDIRECT
+    if (data.role === 'admin') {
+      window.location.href = 'municipal.html';
+    } else {
+      window.location.href = 'dashboard.html';
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert('Error connecting to server');
   }
 }
 
@@ -77,11 +91,11 @@ function checkAuth() {
   }
 }
 
-// ✅ ADMIN CHECK (WITH DEBUG)
+// ADMIN CHECK
 function checkAdmin() {
   const role = localStorage.getItem('role');
 
-  console.log("ROLE:", role); // 🔥 DEBUG LINE
+  console.log("ROLE:", role);
 
   if (role !== 'admin') {
     alert('Access denied');
@@ -95,9 +109,48 @@ function logout() {
   window.location.href = 'login.html';
 }
 
-// ================= ADMIN FUNCTIONS =================
+// ================= FEATURES =================
 
-// 📋 LOAD ALL OBJECTIONS
+// DOWNLOAD FORM
+function downloadForm() {
+  const link = document.createElement('a');
+  link.href = 'objection-form.pdf';
+  link.download = 'objection-form.pdf';
+  link.click();
+}
+
+// SUBMIT OBJECTION
+async function submitObjection() {
+  const userId = localStorage.getItem('userId');
+  const propertyId = document.getElementById('propId')?.value;
+  const reason = document.getElementById('reason')?.value;
+
+  await fetch(API + '/objections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, propertyId, reason })
+  });
+
+  alert('✅ Objection submitted');
+}
+
+// LOAD USER OBJECTIONS
+async function loadObjections() {
+  const userId = localStorage.getItem('userId');
+
+  const res = await fetch(API + '/objections/' + userId);
+  const data = await res.json();
+
+  document.getElementById('objections').innerHTML = data.map(o => `
+    <div class="card">
+      <strong>${o.propertyId}</strong><br>
+      ${o.reason}<br>
+      <span style="color:${getStatusColor(o.status)}">${o.status}</span>
+    </div>
+  `).join('');
+}
+
+// ADMIN: LOAD ALL OBJECTIONS
 async function loadAllObjections() {
   const content = document.getElementById('adminContent');
 
@@ -122,17 +175,56 @@ async function loadAllObjections() {
   `;
 }
 
+// APPEALS
+async function submitAppeal() {
+  const objectionId = document.getElementById('objId')?.value;
+  const reason = document.getElementById('appealReason')?.value;
+
+  await fetch(API + '/appeals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ objectionId, reason })
+  });
+
+  alert('✅ Appeal submitted');
+}
+
+// UPLOAD
+async function uploadFile() {
+  const fileInput = document.getElementById('file');
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  await fetch(API + '/upload', {
+    method: 'POST',
+    body: formData
+  });
+
+  alert('✅ File uploaded');
+}
+
+// NOTIFICATIONS
+async function loadNotifications() {
+  const userId = localStorage.getItem('userId');
+
+  const res = await fetch(API + '/notifications/' + userId);
+  const data = await res.json();
+
+  document.getElementById('notifications').innerHTML = data.map(n =>
+    `<div class="card">🔔 ${n.message}</div>`
+  ).join('');
+}
+
+// ================= ADMIN TOOLS =================
+
+// ESTIMATOR
 function estimateValue() {
-  const content = document.getElementById('adminContent');
-
-  content.innerHTML = `
+  document.getElementById('adminContent').innerHTML = `
     <h3>💰 Market Estimator</h3>
-
-    <input id="size" placeholder="Property Size (m²)">
+    <input id="size" placeholder="Size (m²)">
     <input id="rate" placeholder="Rate per m²">
-
     <button onclick="calculate()">Calculate</button>
-
     <p id="result"></p>
   `;
 }
@@ -141,23 +233,17 @@ function calculate() {
   const size = document.getElementById('size').value;
   const rate = document.getElementById('rate').value;
 
-  const total = size * rate;
-
   document.getElementById('result').innerText =
-    "Estimated Value: R" + total;
+    "Estimated Value: R" + (size * rate);
 }
 
+// AI TOOL
 function aiValuation() {
-  const content = document.getElementById('adminContent');
-
-  content.innerHTML = `
-    <h3>🤖 AI Valuation Comparison</h3>
-
+  document.getElementById('adminContent').innerHTML = `
+    <h3>🤖 AI Comparison</h3>
     <input id="value1" placeholder="Municipal Value">
     <input id="value2" placeholder="Market Value">
-
     <button onclick="compare()">Compare</button>
-
     <p id="aiResult"></p>
   `;
 }
@@ -169,7 +255,13 @@ function compare() {
   const diff = Math.abs(v1 - v2);
 
   document.getElementById('aiResult').innerText =
-    diff > 50000
-      ? "⚠️ Significant discrepancy detected"
-      : "✅ Values are consistent";
+    diff > 50000 ? "⚠️ Large difference" : "✅ Values aligned";
+}
+
+// ================= HELPERS =================
+
+function getStatusColor(status) {
+  if (status === 'Approved') return 'green';
+  if (status === 'Rejected') return 'red';
+  return 'orange';
 }
