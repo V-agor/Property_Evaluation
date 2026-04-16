@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Municipal Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body onload="checkAdmin()">
+
+<div class="container">
+
+  <!-- ✅ SAME SIDEBAR STYLE -->
+  <div class="sidebar">
+    <h2>🏛️ Admin</h2>
+
+    <a href="#" onclick="loadAllObjections()">📋 Objections</a>
+    <a href="#" onclick="estimateValue()">💰 Estimator</a>
+    <a href="#" onclick="aiValuation()">🤖 AI Tool</a>
+    <a href="map.html">🗺️ GIS Map</a>
+
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <!-- ✅ SAME MAIN STRUCTURE -->
+  <div class="main">
+
+    <!-- HEADER (MATCHES USER DASHBOARD) -->
+    <div class="header">
+      <h2>Municipal Dashboard 🏛️</h2>
+      <p>Property Valuation System</p>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="card">
+      <h3>📊 Admin Overview</h3>
+      <p>Manage objections, valuations, and system insights.</p>
+    </div>
+
+    <!-- SYSTEM STATUS -->
+    <div class="card">
+      <h3>⚙️ System Status</h3>
+      <p>All municipal services operational.</p>
+    </div>
+
+    <!-- ACTION BUTTONS (LIKE YOUR DASHBOARD BUTTON STYLE) -->
+    <div class="card">
+      <h3>📋 Manage Objections</h3>
+      <button onclick="loadAllObjections()">Load All Objections</button>
+    </div>
+
+    <div class="card">
+      <h3>💰 Market Estimation Tool</h3>
+      <button onclick="estimateValue()">Open Estimator</button>
+    </div>
+
+    <div class="card">
+      <h3>🤖 AI Valuation Tool</h3>
+      <button onclick="aiValuation()">Run Comparison</button>
+    </div>
+
+    <div class="card">
+      <h3>🗺️ GIS Mapping</h3>
+      <button onclick="window.location.href='map.html'">Open Map</button>
+    </div>
+
+    <!-- DYNAMIC CONTENT AREA -->
+    <div id="adminContent" class="card">
+      <h3>Welcome</h3>
+      <p>Select an admin tool to begin.</p>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>🏠 Dashboard</h2>
+
+    <a href="dashboard.html">📊 Home</a>
+    <a href="objection.html">📝 Submit Objection</a>
+    <a href="upload.html">📂 Upload Documents</a>
+    <a href="track.html">📈 Track Status</a>
+    <a href="appeal.html">⚖️ Appeals</a>
+
+    <br>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <!-- HEADER -->
+    <div class="header">
+      <h3>Welcome Back 👋</h3>
+      <p>Property Evaluation System</p>
+      <button onclick="window.location.href='municipal.html'">
+      🏛️ Go to Municipal Dashboard
+      </button>
+    </div>
+
+    <!-- CARDS -->
+    <div class="card">
+      <h3>📊 Quick Actions</h3>
+      <p>Use the sidebar to navigate through the system.</p>
+    </div>
+
+    <div class="card">
+      <h3>📈 System Status</h3>
+      <p>All services are running normally.</p>
+    </div>
+
+    <div class="card">
+      <h3>🔔 Notifications</h3>
+      <button onclick="loadNotifications()">Load Notifications</button>
+      <div id="notifications"></div>
+    </div>
+
+    <div class="card">
+     <h3>📄 Download</h3>
+     <button onclick="downloadForm()">Download Objection Form</button>
+   </div>
+
+    <div class="card">
+     <h3>💬 Help Assistant</h3>
+     <input id="chatInput" placeholder="Ask something...">
+     <button onclick="chat()">Send</button>
+     <div id="chatBox"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+<script>checkAuth();</script>
+
+<button onclick="downloadForm()">Download Objection Form</button>
+
+</body>
+</html>
